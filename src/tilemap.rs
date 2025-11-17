@@ -1,13 +1,20 @@
 #[derive(Debug, Clone)]
-enum Tile
+pub enum Tile
 {
     Empty,
     Filled,
     OOB
 }
-enum TileMapLoadConfig
+pub enum TileMapLoadConfig
 {
     Box,
+}
+
+#[derive(Debug)]
+pub struct Pos
+{
+    pub x: f32,
+    pub y: f32
 }
 
 #[derive(Debug)]
@@ -18,11 +25,25 @@ pub struct TileMap
     height: u32,
 }
 
-const DEFAULT_WIDTH: u32 = 8;
-const DEFAULT_HEIGHT: u32 = 8;
+const DEFAULT_WIDTH: u32 = 32;
+const DEFAULT_HEIGHT: u32 = 32;
 impl TileMap
 {
-    fn new(config: TileMapLoadConfig) -> Option<Self>
+    pub fn get_visible_tiles(&self, cam_pos: &Pos,  viewport_width: u32, viewport_height: u32) -> Vec<Tile>
+    {
+        let mut visible_tiles = vec![Tile::Empty; (viewport_width * viewport_height * 2) as usize];
+        let bot = cam_pos.y.into() - viewport_height;
+        let left = cam_pos.x.into() - viewport_width;
+        for y in bot..viewport_height * 2
+        {
+            for x in left..viewport_width * 2
+            {
+                visible_tiles[self.get_tile(x, y)];
+            }
+        }
+        visible_tiles
+    }
+    pub fn new(config: TileMapLoadConfig) -> Option<Self>
     {
         let mut tilemap = TileMap
         {
@@ -40,11 +61,13 @@ impl TileMap
                         for x in 0..tilemap.width
                         {
                             let edge = x == 0 || y == 0 || x == &tilemap.width - 1 || y == &tilemap.height - 1;
-                            let index = tilemap.index(x, y).unwrap();
-
                             if edge
                             {
-                                tilemap.tiles[index] = Tile::Filled;
+                                match tilemap.index(x, y)
+                                {
+                                    Some(i) => tilemap.tiles[i] = Tile::Filled,
+                                    None => eprintln!("X: {}, Y: {}, was OOB", x, y),
+                                }
                             }
                         }
                     }
@@ -80,11 +103,6 @@ impl TileMap
     }
     fn in_bounds(&self, x: u32, y: u32) -> bool
     {
-        x >= self.width || x < 0 || y >= self.height || y < 0
+        !(x >= self.width || x < 0 || y >= self.height || y < 0)
     }
-}
-
-pub fn setup_tilemap()
-{
-
 }
