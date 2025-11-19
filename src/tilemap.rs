@@ -29,20 +29,20 @@ const DEFAULT_WIDTH: u32 = 32;
 const DEFAULT_HEIGHT: u32 = 32;
 impl TileMap
 {
-    pub fn get_visible_tiles(&self, cam_pos: &Pos,  viewport_width: u32, viewport_height: u32) -> Vec<Tile>
-    {
-        let mut visible_tiles = vec![Tile::Empty; (viewport_width * viewport_height * 2) as usize];
-        let bot = cam_pos.y.into() - viewport_height;
-        let left = cam_pos.x.into() - viewport_width;
-        for y in bot..viewport_height * 2
-        {
-            for x in left..viewport_width * 2
-            {
-                visible_tiles[self.get_tile(x, y)];
-            }
-        }
-        visible_tiles
-    }
+    //pub fn get_visible_tiles(&self, cam_pos: &Pos,  viewport_width: u32, viewport_height: u32) -> Vec<Tile>
+    //{
+    //    let mut visible_tiles = vec![Tile::Empty; (viewport_width * viewport_height * 2) as usize];
+    //    let bot = cam_pos.y.into() - viewport_height;
+    //    let left = cam_pos.x.into() - viewport_width;
+    //    for y in bot..viewport_height * 2
+    //    {
+    //        for x in left..viewport_width * 2
+    //        {
+    //            //visible_tiles[self.get_tile(x, y)];
+    //        }
+    //    }
+    //    visible_tiles
+    //}
     pub fn new(config: TileMapLoadConfig) -> Option<Self>
     {
         let mut tilemap = TileMap

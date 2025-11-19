@@ -1,22 +1,28 @@
 use std::sync::Arc;
-use wgpu::{Adapter, Device, Instance, Queue, RequestAdapterError, RequestDeviceError, SurfaceConfiguration, SurfaceError, TextureUsages};
+use wgpu::{Adapter, Device, Instance, Queue, RequestAdapterError, RequestDeviceError, SurfaceCapabilities, SurfaceConfiguration, SurfaceError, TextureUsages};
 use wgpu::util::DeviceExt;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
-use crate::rendering::tilemap_rendering::TileMapRendering;
+use crate::rendering::game::camera::CameraData;
+use crate::rendering::draw_calls::draw_calls;
+use crate::rendering::game::tilemap_rendering::TileMapRendering;
 
-struct State
+pub struct State
 {
-    window: Arc<Window>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    config: SurfaceConfiguration,
-    size: winit::dpi::PhysicalSize<u32>,
-    surface: wgpu::Surface<'static>,
-    surface_format: wgpu::TextureFormat,
-    tilemap_rendering: TileMapRendering
+    pub window: Arc<Window>,
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
+    pub config: SurfaceConfiguration,
+    pub window_size: winit::dpi::PhysicalSize<u32>,
+    pub surface: wgpu::Surface<'static>,
+    pub surface_format: wgpu::TextureFormat,
+    pub swapchain_caps: SurfaceCapabilities,
+    //Game specific data
+    pub tilemap_rendering: TileMapRendering,
+    pub main_camera_data: CameraData,
+
 }
 impl State
 {
@@ -26,7 +32,7 @@ impl State
         let adapter = get_default_adapter(&instance).await?;
         let (device, queue) = get_device_queue(&adapter).await?;
 
-        let size = window.inner_size();
+        let window_size = window.inner_size();
 
         let surface = instance.create_surface(window.clone()).unwrap();
         let cap = surface.get_capabilities(&adapter);
@@ -35,15 +41,18 @@ impl State
         {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: size.width,
-            height: size.height,
+            width: window_size.width,
+            height: window_size.height,
             present_mode: cap.present_modes[0],
             desired_maximum_frame_latency: 2,
             alpha_mode: cap.alpha_modes[0],
             view_formats: vec![],
         };
+        let swapchain_caps = surface.get_capabilities(&adapter);
 
-        let tilemap_rendering = TileMapRendering::new(&device, &config);
+        let main_camera_data = CameraData::new(&device, &window_size);
+
+        let tilemap_rendering = TileMapRendering::new(&device, &swapchain_caps, &main_camera_data);
 
         let state = State
         {
@@ -51,10 +60,12 @@ impl State
             device,
             queue,
             config,
-            size,
+            window_size,
             surface,
             surface_format,
-            tilemap_rendering
+            swapchain_caps,
+            tilemap_rendering,
+            main_camera_data
         };
 
         // Configure surface for the first time
@@ -77,8 +88,8 @@ impl State
             // Request compatibility with the sRGB-format texture view we‘re going to create later.
             view_formats: vec![self.surface_format.add_srgb_suffix()],
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
-            width: self.size.width,
-            height: self.size.height,
+            width: self.window_size.width,
+            height: self.window_size.height,
             desired_maximum_frame_latency: 2,
             present_mode: wgpu::PresentMode::AutoVsync,
         };
@@ -87,10 +98,11 @@ impl State
 
     fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>)
     {
-        self.size = new_size;
+        self.window_size = new_size;
 
         // reconfigure the surface
         self.configure_surface();
+        self.main_camera_data.resize(new_size, &self.queue);
     }
 
     fn render(&mut self) -> Result<(), SurfaceError>
@@ -127,9 +139,10 @@ impl State
             occlusion_query_set: None,
         });
 
-        //basic_draw_call(&mut render_pass, &create_triangle(&self.device, &self.config));
 
         // If you wanted to call any drawing commands, they would go here.
+        draw_calls(&mut render_pass, &self);
+
 
         // End the renderpass.
         drop(render_pass);
@@ -180,7 +193,11 @@ impl ApplicationHandler for App
             }
             WindowEvent::RedrawRequested =>
             {
-                state.render();
+               match state.render()
+               {
+                   Ok(r) => (),
+                   Err(e) => eprintln!("Error: {}", e),
+               }
                 // Emits a new redraw requested event.
                 state.get_window().request_redraw();
             }

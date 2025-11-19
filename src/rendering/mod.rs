@@ -1,7 +1,6 @@
 pub mod instance;
-pub mod vertex;
 pub mod shaderloading;
 pub mod prelude;
-mod model;
-mod material;
-pub mod tilemap_rendering;
+mod draw_calls;
+mod test_triangle;
+mod game;
