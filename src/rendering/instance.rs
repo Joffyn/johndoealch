@@ -26,7 +26,7 @@ pub struct State
 }
 impl State
 {
-    async fn new(window: Arc<Window>) -> Result<State, Box<dyn std::error::Error>>
+    pub async fn new(window: Arc<Window>) -> Result<State, Box<dyn std::error::Error>>
     {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
         let adapter = get_default_adapter(&instance).await?;
@@ -74,12 +74,12 @@ impl State
         Ok(state)
     }
 
-    fn get_window(&self) -> &Window
+    pub fn get_window(&self) -> &Window
     {
         &self.window
     }
 
-    fn configure_surface(&self)
+    pub fn configure_surface(&self)
     {
         let surface_config = wgpu::SurfaceConfiguration
         {
@@ -96,7 +96,7 @@ impl State
         self.surface.configure(&self.device, &surface_config);
     }
 
-    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>)
+    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>)
     {
         self.window_size = new_size;
 
@@ -105,7 +105,7 @@ impl State
         self.main_camera_data.resize(new_size, &self.queue);
     }
 
-    fn render(&mut self) -> Result<(), SurfaceError>
+    pub fn render(&mut self) -> Result<(), SurfaceError>
     {
         // Create texture view
         let surface_texture = self
@@ -152,63 +152,6 @@ impl State
         self.window.pre_present_notify();
         surface_texture.present();
         Ok(())
-    }
-}
-#[derive(Default)]
-pub struct App
-{
-    state: Option<State>,
-}
-
-impl ApplicationHandler for App
-{
-    fn resumed(&mut self, event_loop: &ActiveEventLoop)
-    {
-        // Create window object
-        let window = Arc::new(
-            event_loop
-                .create_window(Window::default_attributes())
-                .unwrap(),
-        );
-
-        let state = pollster::block_on(State::new(window.clone())).expect("Could't create state");
-        self.state = Some(state);
-
-        window.request_redraw();
-    }
-
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent)
-    {
-        let state = match &mut self.state
-        {
-            Some(canvas) => canvas,
-            None => return,
-        };
-        match event
-        {
-            WindowEvent::CloseRequested =>
-            {
-                println!("The close button was pressed; stopping");
-                event_loop.exit();
-            }
-            WindowEvent::RedrawRequested =>
-            {
-               match state.render()
-               {
-                   Ok(r) => (),
-                   Err(e) => eprintln!("Error: {}", e),
-               }
-                // Emits a new redraw requested event.
-                state.get_window().request_redraw();
-            }
-            WindowEvent::Resized(size) =>
-            {
-                // Reconfigures the size of the surface. We do not re-render
-                // here as this event is always followed up by redraw request.
-                state.resize(size);
-            }
-            _ => (),
-        }
     }
 }
 async fn get_default_adapter(instance: &Instance)
