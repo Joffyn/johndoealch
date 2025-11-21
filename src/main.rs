@@ -1,11 +1,13 @@
 use std::sync::Arc;
 use winit::event_loop::{ControlFlow, EventLoop};
-use crate::app::App;
+use crate::app::{App};
 use crate::tilemap::{TileMap, TileMapLoadConfig};
 
 mod tilemap;
-mod app;
 mod rendering;
+mod app;
+
+
 
 fn main()
 {
@@ -15,6 +17,6 @@ fn main()
 
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut app = App::default();
+    let mut app = App::new();
     event_loop.run_app(&mut app).unwrap();
 }

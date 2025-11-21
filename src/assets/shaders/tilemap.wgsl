@@ -45,9 +45,9 @@ fn vs_main(in: VertexInput) -> VertexOutput
     quad.y *= tile_height;
     //Subtract 1 in order to get the tile into the bottomleft corner
     quad -= 1.0;
-
     //Multiply by 2 as size is scaled by 2
     quad += index * 2.0;
+
 
     out.clip_position = vec4(quad, 1.0, 1.0);
 
