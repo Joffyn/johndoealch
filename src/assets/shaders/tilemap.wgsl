@@ -48,7 +48,6 @@ fn vs_main(in: VertexInput) -> VertexOutput
     //Multiply by 2 as size is scaled by 2
     quad += index * 2.0;
 
-
     out.clip_position = vec4(quad, 1.0, 1.0);
 
     out.color = vec3(in.position, 0.0);

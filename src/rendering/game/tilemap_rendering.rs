@@ -1,9 +1,11 @@
 use std::borrow::Cow;
+use std::fs;
 use bytemuck::{cast_slice, Pod, Zeroable};
 use wgpu::{vertex_attr_array,  Buffer, BufferAddress, BufferUsages, Device, MultisampleState, PipelineLayoutDescriptor,
            PrimitiveState,  RenderPass, RenderPipeline,  SurfaceCapabilities, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use crate::rendering::game::camera::CameraData;
+use crate::rendering::shaderloading::validate_wgsl;
 
 const TILES_WIDE: u32 = 16;
 const TILES_HIGH: u32 = 16;
@@ -144,6 +146,52 @@ impl TileMapRendering
             index_buffer,
             instance_buffer,
         }
+
+    }
+    pub fn update_shader(&mut self, device: &Device, swapchain_caps : &SurfaceCapabilities, camera_data: &CameraData) 
+    -> Result<String, String>
+    {
+        let source = fs::read_to_string("assets/shaders/tilemap.wgsl").unwrap();
+    
+        validate_wgsl(source.as_str())?;
+
+
+        println!("Starting shader reloading");
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: None,
+            source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
+        });
+        self.render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor
+            {
+            label: Some("Tilemap Pipeline"),
+            layout:
+            Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor
+                {
+                label: Some("Layout"),
+                bind_group_layouts: &[&camera_data.camera_bind_group_layout],
+                push_constant_ranges: &[],
+            })),
+            vertex: wgpu::VertexState
+                {
+                module: &shader,
+                entry_point: Some("vs_main"), // 1.
+                buffers: &[TileMapVertex::desc(), TileInstance::desc()],// 2.
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState
+                { // 3.
+                module: &shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(swapchain_caps.formats[0].into())],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+        Ok(String::from("Succesfully loaded shader"))
 
     }
     pub fn draw(&self, render_pass: &mut RenderPass, camera_data: &CameraData)

@@ -36,8 +36,20 @@ pub fn compile_shader(shaderkind: ShaderKind, path: &str) -> Result<(), Box<dyn 
     }
     Ok(())
 }
-//pub fn load_shader(spirv: Vec<u32>, device: Arc<Device>) -> Result<Arc<ShaderModule>, Validated<VulkanError>>
-//{
-//    let createinfo = ShaderModuleCreateInfo::new(spirv.as_slice());
-//    unsafe { ShaderModule::new(device.clone(), createinfo) }
-//}
+use naga::front::wgsl::Frontend as WgslParser;
+use naga::valid::{Validator, ValidationFlags, Capabilities};
+
+pub fn validate_wgsl(source: &str) -> Result<(), String> {
+    // Parse WGSL
+    let module = WgslParser::new()
+        .parse(source)
+        .map_err(|e| format!("WGSL parse error: {:?}", e))?;
+
+    // Validate semantic correctness
+    let mut validator = Validator::new(ValidationFlags::all(), Capabilities::all());
+
+    validator.validate(&module)
+        .map_err(|e| format!("WGSL validation error: {:?}", e))?;
+
+    Ok(())
+}
