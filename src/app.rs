@@ -3,6 +3,9 @@ use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
+use crate::rendering::instance::State;
+use crate::rendering::material::Material;
+use crate::rendering::shaderloading::{ShaderName, load_shader};
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -10,7 +13,6 @@ pub enum UserEvent
 {
     ShaderReloaded(String),
 }
-use crate::rendering::instance::State;
 
 
 #[derive(Default)]
@@ -20,6 +22,10 @@ pub struct App
 }
 impl App
 {
+    fn test(&'static self)
+    {
+        self.state.as_ref().unwrap().load_all_shaders();
+    }
     pub fn new() -> Self
     {
 
@@ -42,17 +48,17 @@ impl ApplicationHandler<UserEvent> for App
                 {
                     "tilemap.wgsl" => 
                     {
-                        println!("Reload shader!");
-                        let state: &mut State = self.state.as_mut().unwrap();
-                        let res = state.tilemap_rendering.update_shader(
-                            &state.device,
-                            &state.swapchain_caps,
-                            &state.main_camera_data);
-                        match res
-                        {
-                            Ok(s) => println!("{}", s),
-                            Err(e) => eprintln!("{}", e),
-                        }
+
+                        //println!("Reload shader!");
+                        //
+                        //let mut_state: &mut State = self.state.as_mut().unwrap();
+                        ////let state = self.state.as_ref().unwrap();
+                        //let res = mut_state.tilemap_rendering.update_shader(&self.state.unwrap());
+                        //match res
+                        //{
+                        //    Ok(s) => println!("{}", s),
+                        //    Err(e) => eprintln!("{}", e),
+                        //}
                     },
                     _ => println!("meme")
                 }

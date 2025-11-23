@@ -1,22 +1,21 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 use wgpu::{Adapter, Device, Instance, Queue, RequestAdapterError, RequestDeviceError, SurfaceCapabilities, SurfaceConfiguration, SurfaceError, TextureUsages};
-use wgpu::util::DeviceExt;
-use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
-use winit::event_loop::ActiveEventLoop;
-use winit::window::{Window, WindowId};
+use winit::window::{Window};
 use crate::rendering::game::camera::CameraData;
 use crate::rendering::draw_calls::draw_calls;
-use crate::rendering::game::tilemap_rendering::TileMapRendering;
+use crate::rendering::game::tilemap_rendering::{TileInstance, TileMapRendering, TileMapVertex};
+use crate::rendering::material::{Material, MaterialName, load_material};
+use crate::rendering::shaderloading::ShaderName;
 
 pub struct State
 {
     pub window: Arc<Window>,
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
-    pub config: SurfaceConfiguration,
+    pub device: Arc<wgpu::Device>,
+    pub queue: Arc<wgpu::Queue>,
+    pub config: Arc<SurfaceConfiguration>,
     pub window_size: winit::dpi::PhysicalSize<u32>,
-    pub surface: wgpu::Surface<'static>,
+    pub surface: Arc<Surface<'static>>,
     pub surface_format: wgpu::TextureFormat,
     pub swapchain_caps: SurfaceCapabilities,
     //Game specific data
@@ -26,6 +25,16 @@ pub struct State
 }
 impl State
 {
+    pub fn load_all_shaders(&'static self)
+    {
+        let _ = load_material::<TileMapVertex, TileInstance>(
+            &ShaderName::TileMap, 
+            &MaterialName::TileMap, 
+            &self.device, 
+            &self.main_camera_data, 
+            &self.swapchain_caps);
+    }
+
     pub async fn new(window: Arc<Window>) -> Result<State, Box<dyn std::error::Error>>
     {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
@@ -52,6 +61,7 @@ impl State
 
         let main_camera_data = CameraData::new(&device, &window_size);
 
+        
         let tilemap_rendering = TileMapRendering::new(&device, &swapchain_caps, &main_camera_data);
 
         let state = State
@@ -65,7 +75,7 @@ impl State
             surface_format,
             swapchain_caps,
             tilemap_rendering,
-            main_camera_data
+            main_camera_data,
         };
 
         // Configure surface for the first time

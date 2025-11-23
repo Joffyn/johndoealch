@@ -5,7 +5,9 @@ use wgpu::{vertex_attr_array,  Buffer, BufferAddress, BufferUsages, Device, Mult
            PrimitiveState,  RenderPass, RenderPipeline,  SurfaceCapabilities, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use crate::rendering::game::camera::CameraData;
-use crate::rendering::shaderloading::validate_wgsl;
+use crate::rendering::instance::State;
+use crate::rendering::material::{Material, MaterialName};
+use crate::rendering::bufferlayout::{BufferLayout};
 
 const TILES_WIDE: u32 = 16;
 const TILES_HIGH: u32 = 16;
@@ -21,9 +23,10 @@ pub struct TileMapVertex {
 
 impl TileMapVertex
 {
-    const ATTRIBS: [VertexAttribute; 1]
-    = vertex_attr_array![0 => Float32x2];
-
+    const ATTRIBS: [VertexAttribute; 1] = vertex_attr_array![0 => Float32x2];
+}
+impl BufferLayout for TileMapVertex
+{
     fn desc() -> VertexBufferLayout<'static>
     {
         VertexBufferLayout
@@ -47,10 +50,10 @@ const INDICES: &[u16] = &[
 ];
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct TileInstance {
+pub struct TileInstance {
     index: [f32; 2],
 }
-impl TileInstance
+impl BufferLayout for TileInstance
 {
     fn desc() -> VertexBufferLayout<'static>
     {
@@ -65,11 +68,63 @@ impl TileInstance
 
 pub struct TileMapRendering
 {
-    render_pipeline: RenderPipeline,
+    //render_pipeline: RenderPipeline,
+    material_name: MaterialName,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     instance_buffer: Buffer,
 }
+
+//impl Material for TileMapRendering
+//{
+//
+//    fn update_shader(&mut self, state: &State)
+//    -> Result<String, String>
+//    {
+//        let source = fs::read_to_string("assets/shaders/tilemap.wgsl").unwrap();
+//    
+//        validate_wgsl(source.as_str())?;
+//
+//
+//        println!("Starting shader reloading");
+//        let shader = state.device.create_shader_module(wgpu::ShaderModuleDescriptor {
+//            label: None,
+//            source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
+//        });
+//        self.render_pipeline = state.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor
+//            {
+//            label: Some("Tilemap Pipeline"),
+//            layout:
+//            Some(&state.device.create_pipeline_layout(&PipelineLayoutDescriptor
+//                {
+//                label: Some("Layout"),
+//                bind_group_layouts: &[&state.main_camera_data.camera_bind_group_layout],
+//                push_constant_ranges: &[],
+//            })),
+//            vertex: wgpu::VertexState
+//                {
+//                module: &shader,
+//                entry_point: Some("vs_main"), // 1.
+//                buffers: &[TileMapVertex::desc(), TileInstance::desc()],// 2.
+//                compilation_options: wgpu::PipelineCompilationOptions::default(),
+//            },
+//            fragment: Some(wgpu::FragmentState
+//                { // 3.
+//                module: &shader,
+//                entry_point: Some("fs_main"),
+//                targets: &[Some(state.swapchain_caps.formats[0].into())],
+//                compilation_options: wgpu::PipelineCompilationOptions::default(),
+//            }),
+//            primitive: PrimitiveState::default(),
+//            depth_stencil: None,
+//            multisample: MultisampleState::default(),
+//            multiview: None,
+//            cache: None,
+//        });
+//        Ok(String::from("Succesfully loaded shader"))
+//    }
+//}
+
 impl TileMapRendering
 {
     pub fn new(device: &Device, swapchain_caps : &SurfaceCapabilities, camera_data: &CameraData) -> Self
@@ -112,88 +167,89 @@ impl TileMapRendering
         );
         TileMapRendering
         {
-            render_pipeline: device.create_render_pipeline(&wgpu::RenderPipelineDescriptor
-            {
-                label: Some("Tilemap Pipeline"),
-                layout:
-                Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor
-                {
-                    label: Some("Layout"),
-                    bind_group_layouts: &[&camera_data.camera_bind_group_layout],
-                    push_constant_ranges: &[],
-                })),
-                vertex: wgpu::VertexState
-                {
-                    module: &shader,
-                    entry_point: Some("vs_main"), // 1.
-                    buffers: &[TileMapVertex::desc(), TileInstance::desc()],// 2.
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState
-                { // 3.
-                    module: &shader,
-                    entry_point: Some("fs_main"),
-                    targets: &[Some(swapchain_caps.formats[0].into())],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                }),
-                primitive: PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: MultisampleState::default(),
-                multiview: None,
-                cache: None,
-            }),
+            //render_pipeline: device.create_render_pipeline(&wgpu::RenderPipelineDescriptor
+            //{
+            //    label: Some("Tilemap Pipeline"),
+            //    layout:
+            //    Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor
+            //    {
+            //        label: Some("Layout"),
+            //        bind_group_layouts: &[&camera_data.camera_bind_group_layout],
+            //        push_constant_ranges: &[],
+            //    })),
+            //    vertex: wgpu::VertexState
+            //    {
+            //        module: &shader,
+            //        entry_point: Some("vs_main"), // 1.
+            //        buffers: &[TileMapVertex::desc(), TileInstance::desc()],// 2.
+            //        compilation_options: wgpu::PipelineCompilationOptions::default(),
+            //    },
+            //    fragment: Some(wgpu::FragmentState
+            //    { // 3.
+            //        module: &shader,
+            //        entry_point: Some("fs_main"),
+            //        targets: &[Some(swapchain_caps.formats[0].into())],
+            //        compilation_options: wgpu::PipelineCompilationOptions::default(),
+            //    }),
+            //    primitive: PrimitiveState::default(),
+            //    depth_stencil: None,
+            //    multisample: MultisampleState::default(),
+            //    multiview: None,
+            //    cache: None,
+            //}),
+            material_name: MaterialName::TileMap,
             vertex_buffer,
             index_buffer,
             instance_buffer,
         }
 
     }
-    pub fn update_shader(&mut self, device: &Device, swapchain_caps : &SurfaceCapabilities, camera_data: &CameraData) 
-    -> Result<String, String>
-    {
-        let source = fs::read_to_string("assets/shaders/tilemap.wgsl").unwrap();
-    
-        validate_wgsl(source.as_str())?;
+    //pub fn update_shader(&mut self, device: &Device, swapchain_caps : &SurfaceCapabilities, camera_data: &CameraData) 
+    //-> Result<String, String>
+    //{
+    //    let source = fs::read_to_string("assets/shaders/tilemap.wgsl").unwrap();
+    //
+    //    validate_wgsl(source.as_str())?;
 
 
-        println!("Starting shader reloading");
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: None,
-            source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
-        });
-        self.render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor
-            {
-            label: Some("Tilemap Pipeline"),
-            layout:
-            Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor
-                {
-                label: Some("Layout"),
-                bind_group_layouts: &[&camera_data.camera_bind_group_layout],
-                push_constant_ranges: &[],
-            })),
-            vertex: wgpu::VertexState
-                {
-                module: &shader,
-                entry_point: Some("vs_main"), // 1.
-                buffers: &[TileMapVertex::desc(), TileInstance::desc()],// 2.
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            },
-            fragment: Some(wgpu::FragmentState
-                { // 3.
-                module: &shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(swapchain_caps.formats[0].into())],
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-            }),
-            primitive: PrimitiveState::default(),
-            depth_stencil: None,
-            multisample: MultisampleState::default(),
-            multiview: None,
-            cache: None,
-        });
-        Ok(String::from("Succesfully loaded shader"))
+    //    println!("Starting shader reloading");
+    //    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+    //        label: None,
+    //        source: wgpu::ShaderSource::Wgsl(Cow::Owned(source)),
+    //    });
+    //    self.render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor
+    //        {
+    //        label: Some("Tilemap Pipeline"),
+    //        layout:
+    //        Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor
+    //            {
+    //            label: Some("Layout"),
+    //            bind_group_layouts: &[&camera_data.camera_bind_group_layout],
+    //            push_constant_ranges: &[],
+    //        })),
+    //        vertex: wgpu::VertexState
+    //            {
+    //            module: &shader,
+    //            entry_point: Some("vs_main"), // 1.
+    //            buffers: &[TileMapVertex::desc(), TileInstance::desc()],// 2.
+    //            compilation_options: wgpu::PipelineCompilationOptions::default(),
+    //        },
+    //        fragment: Some(wgpu::FragmentState
+    //            { // 3.
+    //            module: &shader,
+    //            entry_point: Some("fs_main"),
+    //            targets: &[Some(swapchain_caps.formats[0].into())],
+    //            compilation_options: wgpu::PipelineCompilationOptions::default(),
+    //        }),
+    //        primitive: PrimitiveState::default(),
+    //        depth_stencil: None,
+    //        multisample: MultisampleState::default(),
+    //        multiview: None,
+    //        cache: None,
+    //    });
+    //    Ok(String::from("Succesfully loaded shader"))
 
-    }
+    //}
     pub fn draw(&self, render_pass: &mut RenderPass, camera_data: &CameraData)
     {
         render_pass.set_pipeline(&self.render_pipeline);
