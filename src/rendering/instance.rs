@@ -1,6 +1,6 @@
 use std::collections::HashSet;
-use std::sync::Arc;
-use wgpu::{Adapter, Device, Instance, Queue, RequestAdapterError, RequestDeviceError, SurfaceCapabilities, SurfaceConfiguration, SurfaceError, TextureUsages};
+use std::sync::{Arc, Mutex};
+use wgpu::{Adapter, Device, Instance, Queue, RequestAdapterError, RequestDeviceError, Surface, SurfaceCapabilities, SurfaceConfiguration, SurfaceError, TextureUsages};
 use winit::window::{Window};
 use crate::rendering::game::camera::CameraData;
 use crate::rendering::draw_calls::draw_calls;
@@ -15,24 +15,25 @@ pub struct State
     pub queue: Arc<wgpu::Queue>,
     pub config: Arc<SurfaceConfiguration>,
     pub window_size: winit::dpi::PhysicalSize<u32>,
-    pub surface: Arc<Surface<'static>>,
+    pub surface: Surface<'static>,
     pub surface_format: wgpu::TextureFormat,
-    pub swapchain_caps: SurfaceCapabilities,
+    pub swapchain_caps: Arc<SurfaceCapabilities>,
     //Game specific data
     pub tilemap_rendering: TileMapRendering,
-    pub main_camera_data: CameraData,
+    pub main_camera_data: Arc<Mutex<CameraData>>,
 
 }
 impl State
 {
-    pub fn load_all_shaders(&'static self)
+
+    fn load_all_materials(&self)
     {
         let _ = load_material::<TileMapVertex, TileInstance>(
-            &ShaderName::TileMap, 
-            &MaterialName::TileMap, 
-            &self.device, 
-            &self.main_camera_data, 
-            &self.swapchain_caps);
+            &ShaderName::TileMap,
+            &MaterialName::TileMap,
+            self.device.clone(),
+            self.main_camera_data.clone(),
+            self.swapchain_caps.clone());
     }
 
     pub async fn new(window: Arc<Window>) -> Result<State, Box<dyn std::error::Error>>
@@ -57,12 +58,17 @@ impl State
             alpha_mode: cap.alpha_modes[0],
             view_formats: vec![],
         };
-        let swapchain_caps = surface.get_capabilities(&adapter);
+        let swapchain_caps = Arc::new(surface.get_capabilities(&adapter));
 
-        let main_camera_data = CameraData::new(&device, &window_size);
+        let main_camera_data = Arc::new(Mutex::new(CameraData::new(&device, &window_size)));
+
+        let device = Arc::new(device);
+        let queue = Arc::new(queue);
+        let config = Arc::new(config);
+
 
         
-        let tilemap_rendering = TileMapRendering::new(&device, &swapchain_caps, &main_camera_data);
+        //let tilemap_rendering = TileMapRendering::new(&device, &swapchain_caps, &main_camera_data);
 
         let state = State
         {
@@ -75,11 +81,12 @@ impl State
             surface_format,
             swapchain_caps,
             tilemap_rendering,
-            main_camera_data,
+            main_camera_data
         };
 
         // Configure surface for the first time
         state.configure_surface();
+        state.load_all_materials();
 
         Ok(state)
     }
@@ -112,7 +119,7 @@ impl State
 
         // reconfigure the surface
         self.configure_surface();
-        self.main_camera_data.resize(new_size, &self.queue);
+        self.main_camera_data.lock().unwrap().resize(new_size, &self.queue);
     }
 
     pub fn render(&mut self) -> Result<(), SurfaceError>

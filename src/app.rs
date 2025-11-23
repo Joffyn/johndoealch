@@ -22,10 +22,6 @@ pub struct App
 }
 impl App
 {
-    fn test(&'static self)
-    {
-        self.state.as_ref().unwrap().load_all_shaders();
-    }
     pub fn new() -> Self
     {
 

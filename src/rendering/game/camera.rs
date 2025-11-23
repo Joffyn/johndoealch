@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bytemuck::cast_slice;
 use wgpu::{BindGroup, BindGroupLayout, Buffer, Device, Queue};
 use wgpu::util::DeviceExt;
@@ -74,7 +76,7 @@ impl CameraData
         self.camera_uniform.pos = pos;
         queue.write_buffer(&self.camera_buffer, 0, cast_slice(&[self.camera_uniform]));
     }
-    pub fn resize(&mut self, window_size: PhysicalSize<u32>, queue: &Queue)
+    pub fn resize(&mut self, window_size: PhysicalSize<u32>, queue: &Arc<Queue>)
     {
         self.camera_uniform.window_size = [window_size.width as f32, window_size.height as f32];
         queue.write_buffer(&self.camera_buffer, 0, cast_slice(&[self.camera_uniform]));

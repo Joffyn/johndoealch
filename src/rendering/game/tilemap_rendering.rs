@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fs;
+use std::sync::{Arc, Mutex};
 use bytemuck::{cast_slice, Pod, Zeroable};
 use wgpu::{vertex_attr_array,  Buffer, BufferAddress, BufferUsages, Device, MultisampleState, PipelineLayoutDescriptor,
            PrimitiveState,  RenderPass, RenderPipeline,  SurfaceCapabilities, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
@@ -127,7 +128,7 @@ pub struct TileMapRendering
 
 impl TileMapRendering
 {
-    pub fn new(device: &Device, swapchain_caps : &SurfaceCapabilities, camera_data: &CameraData) -> Self
+    pub fn new(device: &Device, swapchain_caps : &SurfaceCapabilities, camera_data: Arc<Mutex<CameraData>>) -> Self
     {
         // Load the shaders from disk
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {

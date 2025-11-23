@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::RwLock};
+use std::{collections::HashMap, sync::{Arc, Mutex, RwLock}};
 
 use once_cell::sync::Lazy;
 use strum::{Display, EnumString};
@@ -32,12 +32,12 @@ pub fn on_shader_reload(shader_name: &ShaderName)
 pub fn load_material<T, I>(
     shader_name: &ShaderName,
     material_name: &MaterialName,
-    device: &'static Device,
-    camera_data: &'static CameraData,
-    swapchain_caps: &'static SurfaceCapabilities) -> Result<MaterialName, Box<dyn std::error::Error>>
+    device: Arc<Device>,
+    camera_data: Arc<Mutex<CameraData>>,
+    swapchain_caps: Arc<SurfaceCapabilities>) -> Result<MaterialName, Box<dyn std::error::Error>>
     where T: BufferLayout, I: BufferLayout
 {
-    let shader = load_shader(shader_name, device)?;
+    let shader = load_shader(shader_name, &device)?;
     let vertex_buffer_layout = T::desc();
     let instance_buffer_layout = I::desc();
     let mat = Material 
@@ -49,7 +49,7 @@ pub fn load_material<T, I>(
             Some(&device.create_pipeline_layout(&PipelineLayoutDescriptor
                 {
                 label: Some("Layout"),
-                bind_group_layouts: &[&camera_data.camera_bind_group_layout],
+                bind_group_layouts: &[&camera_data.lock().unwrap().camera_bind_group_layout],
                 push_constant_ranges: &[],
             })),
             vertex: wgpu::VertexState
@@ -73,9 +73,9 @@ pub fn load_material<T, I>(
             cache: None,
         }),
         shader_name: shader_name.clone(),
-        camera_data,
-        swapchain_caps,
-        device,
+        camera_data: camera_data.clone(),
+        swapchain_caps: swapchain_caps.clone(),
+        device: device.clone(),
         vertex_buffer_layout,
         instance_buffer_layout
     };
@@ -86,9 +86,9 @@ pub struct Material
 {
     render_pipeline: RenderPipeline,
     shader_name: ShaderName,
-    device: &'static Device,
-    camera_data: &'static CameraData,
-    swapchain_caps: &'static SurfaceCapabilities,
+    device: Arc<Device>,
+    camera_data: Arc<Mutex<CameraData>>,
+    swapchain_caps: Arc<SurfaceCapabilities>,
     vertex_buffer_layout: VertexBufferLayout<'static>,
     instance_buffer_layout: VertexBufferLayout<'static>
 }
@@ -152,7 +152,7 @@ impl Material
             return Ok("Not the correct shader".to_string());
         }
 
-        let shader = match load_shader(shader_name, self.device)
+        let shader = match load_shader(shader_name, &self.device)
         {
             Ok(s) => s,
             Err(_) => return Err("Failed to update shader".to_string()),
@@ -166,7 +166,7 @@ impl Material
             Some(&self.device.create_pipeline_layout(&PipelineLayoutDescriptor
                 {
                 label: Some("Layout"),
-                bind_group_layouts: &[&self.camera_data.camera_bind_group_layout],
+                bind_group_layouts: &[&self.camera_data.lock().unwrap().camera_bind_group_layout],
                 push_constant_ranges: &[],
             })),
             vertex: wgpu::VertexState
